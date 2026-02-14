@@ -42,6 +42,7 @@
         "remotePath": "/uploads",
         "protocol": "ftp"
       }
-    ]
+    ],
+    "ftpUpload.defaultServer": "Servidor de Teste FTP"
   }
 }

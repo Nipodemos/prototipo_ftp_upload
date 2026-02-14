@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      basic-ftp:
+        specifier: ^5.1.0
+        version: 5.1.0
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -26,6 +30,10 @@ packages:
   '@types/vscode@1.109.0':
     resolution: {integrity: sha512-0Pf95rnwEIwDbmXGC08r0B4TQhAbsHQ5UyTIgVgoieDe4cOnf92usuR5dEczb6bTKEp7ziZH4TV1TRGPPCExtw==}
 
+  basic-ftp@5.1.0:
+    resolution: {integrity: sha512-RkaJzeJKDbaDWTIPiJwubyljaEPwpVWkm9Rt5h9Nd6h7tEXTJ3VB4qxdZBioV7JO5yLUaOKwz7vDOzlncUsegw==}
+    engines: {node: '>=10.0.0'}
+
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
@@ -41,6 +49,8 @@ snapshots:
       undici-types: 6.21.0
 
   '@types/vscode@1.109.0': {}
+
+  basic-ftp@5.1.0: {}
 
   typescript@5.9.3: {}
 

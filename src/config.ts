@@ -29,6 +29,27 @@ export function getFtpServers(): FtpServerConfig[] {
 }
 
 /**
+ * Retorna o nome configurado como servidor FTP padrão.
+ */
+export function getDefaultFtpServerName(): string {
+	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	const defaultServer = config.get<string>('defaultServer', '');
+	return defaultServer.trim();
+}
+
+/**
+ * Retorna o servidor FTP padrão configurado, se existir.
+ */
+export function getDefaultFtpServer(): FtpServerConfig | undefined {
+	const defaultServerName = getDefaultFtpServerName();
+	if (!defaultServerName) {
+		return undefined;
+	}
+
+	return getFtpServerByName(defaultServerName);
+}
+
+/**
  * Retorna um servidor FTP pelo nome.
  */
 export function getFtpServerByName(name: string): FtpServerConfig | undefined {
@@ -59,6 +80,27 @@ export function validateFtpServer(server: FtpServerConfig): string[] {
 	}
 	if (!['ftp', 'sftp', 'ftps'].includes(server.protocol)) {
 		errors.push('O campo "protocol" deve ser "ftp", "sftp" ou "ftps".');
+	}
+
+	return errors;
+}
+
+/**
+ * Valida a configuração de servidor FTP padrão.
+ */
+export function validateDefaultFtpServer(): string[] {
+	const errors: string[] = [];
+	const defaultServerName = getDefaultFtpServerName();
+
+	if (!defaultServerName) {
+		return errors;
+	}
+
+	const defaultServer = getFtpServerByName(defaultServerName);
+	if (!defaultServer) {
+		errors.push(
+			`O servidor padrão "${defaultServerName}" não foi encontrado em "ftpUpload.servers".`
+		);
 	}
 
 	return errors;

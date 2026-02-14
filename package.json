@@ -121,6 +121,11 @@
               }
             }
           }
+        },
+        "ftpUpload.defaultServer": {
+          "type": "string",
+          "default": "",
+          "description": "Nome do servidor FTP padrão (deve ser igual ao campo \"name\" de um item em ftpUpload.servers)."
         }
       }
     }
@@ -131,8 +136,11 @@
     "watch": "tsc -b -w"
   },
   "devDependencies": {
-    "@types/vscode": "^1.96.0",
     "@types/node": "^20.0.0",
+    "@types/vscode": "^1.96.0",
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "basic-ftp": "^5.1.0"
   }
 }
