@@ -16,8 +16,56 @@
       {
         "command": "ftpUpload.listServers",
         "title": "FTP Upload: Listar Servidores"
+      },
+      {
+        "command": "ftpUpload.downloadDefault",
+        "title": "Baixar do FTP padrão"
+      },
+      {
+        "command": "ftpUpload.downloadSelect",
+        "title": "Baixar do FTP..."
+      },
+      {
+        "command": "ftpUpload.uploadDefault",
+        "title": "Upload para FTP padrão"
+      },
+      {
+        "command": "ftpUpload.uploadSelect",
+        "title": "Upload para FTP..."
       }
     ],
+    "submenus": [
+      {
+        "id": "ftpUpload.deployment",
+        "label": "deployment"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "submenu": "ftpUpload.deployment",
+          "group": "navigation@100"
+        }
+      ],
+      "ftpUpload.deployment": [
+        {
+          "command": "ftpUpload.downloadDefault",
+          "group": "1_download"
+        },
+        {
+          "command": "ftpUpload.downloadSelect",
+          "group": "1_download"
+        },
+        {
+          "command": "ftpUpload.uploadDefault",
+          "group": "2_upload"
+        },
+        {
+          "command": "ftpUpload.uploadSelect",
+          "group": "2_upload"
+        }
+      ]
+    },
     "configuration": {
       "title": "FTP Upload",
       "properties": {

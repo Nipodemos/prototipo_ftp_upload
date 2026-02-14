@@ -57,7 +57,29 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	context.subscriptions.push(listServersCmd);
+	const downloadDefaultCmd = vscode.commands.registerCommand('ftpUpload.downloadDefault', async () => {
+		vscode.window.showInformationMessage('Baixar do FTP padrão (em breve).');
+	});
+
+	const downloadSelectCmd = vscode.commands.registerCommand('ftpUpload.downloadSelect', async () => {
+		vscode.window.showInformationMessage('Baixar do FTP... (em breve).');
+	});
+
+	const uploadDefaultCmd = vscode.commands.registerCommand('ftpUpload.uploadDefault', async () => {
+		vscode.window.showInformationMessage('Upload para FTP padrão (em breve).');
+	});
+
+	const uploadSelectCmd = vscode.commands.registerCommand('ftpUpload.uploadSelect', async () => {
+		vscode.window.showInformationMessage('Upload para FTP... (em breve).');
+	});
+
+	context.subscriptions.push(
+		listServersCmd,
+		downloadDefaultCmd,
+		downloadSelectCmd,
+		uploadDefaultCmd,
+		uploadSelectCmd
+	);
 }
 
 export function deactivate() {}
