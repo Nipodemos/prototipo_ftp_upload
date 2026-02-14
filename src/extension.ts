@@ -40,20 +40,70 @@ function toRemotePath(localFileUri: vscode.Uri, remoteBasePath: string): string 
 	return path.posix.join(normalizedBase, relativePosix);
 }
 
-async function downloadSelectedFileFromServer(
-	server: FtpServerConfig,
-	resource?: vscode.Uri
-): Promise<void> {
+function validateServerOrShow(server: FtpServerConfig): boolean {
 	const validationErrors = validateFtpServer(server);
 	if (validationErrors.length > 0) {
-		vscode.window.showErrorMessage(`Servidor "${server.name}": ${validationErrors.join(', ')}`);
-		return;
+		vscode.window.showErrorMessage(`Servidor "${server.name || '(sem nome)'}": ${validationErrors.join(', ')}`);
+		return false;
 	}
 
 	if (server.protocol !== 'ftp') {
 		vscode.window.showErrorMessage(
 			`Protocolo "${server.protocol}" ainda não suportado no download. Use um servidor com protocolo "ftp".`
 		);
+		return false;
+	}
+
+	return true;
+}
+
+function validateServersOrShow(servers: FtpServerConfig[], stopOnFirstError: boolean): boolean {
+	let hasErrors = false;
+
+	for (const server of servers) {
+		const errors = validateFtpServer(server);
+		if (errors.length === 0) {
+			continue;
+		}
+
+		hasErrors = true;
+		vscode.window.showErrorMessage(`Servidor "${server.name || '(sem nome)'}": ${errors.join(', ')}`);
+		if (stopOnFirstError) {
+			return false;
+		}
+	}
+
+	return !hasErrors;
+}
+
+function toServerQuickPickItems(servers: FtpServerConfig[]) {
+	const defaultServerName = getDefaultFtpServerName();
+	return servers.map(server => ({
+		label: server.name,
+		description: `${server.protocol}://${server.host}:${server.port}`,
+		detail: `${server.remotePath}${server.name === defaultServerName ? ' (Padrão)' : ''}`,
+		server
+	}));
+}
+
+async function pickServer(
+	servers: FtpServerConfig[],
+	placeholder: string,
+	title?: string
+): Promise<FtpServerConfig | undefined> {
+	const selected = await vscode.window.showQuickPick(toServerQuickPickItems(servers), {
+		placeHolder: placeholder,
+		title
+	});
+
+	return selected?.server;
+}
+
+async function downloadSelectedFileFromServer(
+	server: FtpServerConfig,
+	resource?: vscode.Uri
+): Promise<void> {
+	if (!validateServerOrShow(server)) {
 		return;
 	}
 
@@ -100,13 +150,42 @@ async function downloadSelectedFileFromServer(
 	);
 }
 
+function getDefaultServerOrShow(): FtpServerConfig | undefined {
+	const defaultErrors = validateDefaultFtpServer();
+	if (defaultErrors.length > 0) {
+		vscode.window.showErrorMessage(defaultErrors.join(' '));
+		return undefined;
+	}
+
+	const defaultServer = getDefaultFtpServer();
+	if (!defaultServer) {
+		vscode.window.showWarningMessage(
+			'Nenhum servidor padrão configurado. Defina "ftpUpload.defaultServer" no settings.json.'
+		);
+		return undefined;
+	}
+
+	return defaultServer;
+}
+
+async function executeDownloadCommand(
+	server: FtpServerConfig,
+	resource: vscode.Uri | undefined,
+	errorPrefix: string
+): Promise<void> {
+	try {
+		await downloadSelectedFileFromServer(server, resource);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		vscode.window.showErrorMessage(`${errorPrefix}: ${message}`);
+	}
+}
+
 export function activate(context: vscode.ExtensionContext) {
 	console.log('Extensão "FTP Upload" ativa!');
 
-	// Comando para listar os servidores FTP configurados
 	const listServersCmd = vscode.commands.registerCommand('ftpUpload.listServers', async () => {
 		const servers = getFtpServers();
-
 		if (servers.length === 0) {
 			const openSettings = 'Abrir Settings';
 			const choice = await vscode.window.showWarningMessage(
@@ -119,19 +198,7 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		// Valida todos os servidores
-		let hasErrors = false;
-		for (const server of servers) {
-			const errors = validateFtpServer(server);
-			if (errors.length > 0) {
-				hasErrors = true;
-				vscode.window.showErrorMessage(
-					`Servidor "${server.name || '(sem nome)'}": ${errors.join(', ')}`
-				);
-			}
-		}
-
-		if (hasErrors) {
+		if (!validateServersOrShow(servers, false)) {
 			return;
 		}
 
@@ -141,54 +208,35 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		const defaultServerName = getDefaultFtpServerName();
-
-		// Mostra um QuickPick com os servidores configurados
-		const items = servers.map(s => ({
-			label: s.name,
-			description: `${s.protocol}://${s.host}:${s.port}`,
-			detail: `Diretório remoto: ${s.remotePath}${defaultServerName === s.name ? ' (Padrão)' : ''}`,
-			server: s
-		}));
-
-		const selected = await vscode.window.showQuickPick(items, {
-			placeHolder: 'Selecione um servidor FTP',
-			title: 'Servidores FTP Configurados'
-		});
-
-		if (selected) {
-			vscode.window.showInformationMessage(
-				`Servidor selecionado: ${selected.server.name} (${selected.server.host})`
-			);
-			// TODO: Aqui será implementada a lógica de upload
+		const selectedServer = await pickServer(
+			servers,
+			'Selecione um servidor FTP',
+			'Servidores FTP Configurados'
+		);
+		if (!selectedServer) {
+			return;
 		}
+
+		vscode.window.showInformationMessage(
+			`Servidor selecionado: ${selectedServer.name} (${selectedServer.host})`
+		);
 	});
 
-	const downloadDefaultCmd = vscode.commands.registerCommand('ftpUpload.downloadDefault', async (resource?: vscode.Uri) => {
-		try {
-			const defaultErrors = validateDefaultFtpServer();
-			if (defaultErrors.length > 0) {
-				vscode.window.showErrorMessage(defaultErrors.join(' '));
-				return;
-			}
-
-			const defaultServer = getDefaultFtpServer();
+	const downloadDefaultCmd = vscode.commands.registerCommand(
+		'ftpUpload.downloadDefault',
+		async (resource?: vscode.Uri) => {
+			const defaultServer = getDefaultServerOrShow();
 			if (!defaultServer) {
-				vscode.window.showWarningMessage(
-					'Nenhum servidor padrão configurado. Defina "ftpUpload.defaultServer" no settings.json.'
-				);
 				return;
 			}
 
-			await downloadSelectedFileFromServer(defaultServer, resource);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			vscode.window.showErrorMessage(`Falha no download FTP padrão: ${message}`);
+			await executeDownloadCommand(defaultServer, resource, 'Falha no download FTP padrão');
 		}
-	});
+	);
 
-	const downloadSelectCmd = vscode.commands.registerCommand('ftpUpload.downloadSelect', async (resource?: vscode.Uri) => {
-		try {
+	const downloadSelectCmd = vscode.commands.registerCommand(
+		'ftpUpload.downloadSelect',
+		async (resource?: vscode.Uri) => {
 			const servers = getFtpServers();
 			if (servers.length === 0) {
 				vscode.window.showWarningMessage(
@@ -197,54 +245,26 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
-			for (const server of servers) {
-				const errors = validateFtpServer(server);
-				if (errors.length > 0) {
-					vscode.window.showErrorMessage(`Servidor "${server.name || '(sem nome)'}": ${errors.join(', ')}`);
-					return;
-				}
-			}
-
-			const defaultServerName = getDefaultFtpServerName();
-			const items = servers.map(server => ({
-				label: server.name,
-				description: `${server.protocol}://${server.host}:${server.port}`,
-				detail: `${server.remotePath}${server.name === defaultServerName ? ' (Padrão)' : ''}`,
-				server
-			}));
-
-			const selected = await vscode.window.showQuickPick(items, {
-				placeHolder: 'Selecione o servidor FTP para download'
-			});
-			if (!selected) {
+			if (!validateServersOrShow(servers, true)) {
 				return;
 			}
 
-			await downloadSelectedFileFromServer(selected.server, resource);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			vscode.window.showErrorMessage(`Falha no download FTP: ${message}`);
+			const selectedServer = await pickServer(servers, 'Selecione o servidor FTP para download');
+			if (!selectedServer) {
+				return;
+			}
+
+			await executeDownloadCommand(selectedServer, resource, 'Falha no download FTP');
 		}
-	});
+	);
 
 	const uploadDefaultCmd = vscode.commands.registerCommand('ftpUpload.uploadDefault', async () => {
-		const defaultErrors = validateDefaultFtpServer();
-		if (defaultErrors.length > 0) {
-			vscode.window.showErrorMessage(defaultErrors.join(' '));
-			return;
-		}
-
-		const defaultServer = getDefaultFtpServer();
+		const defaultServer = getDefaultServerOrShow();
 		if (!defaultServer) {
-			vscode.window.showWarningMessage(
-				'Nenhum servidor padrão configurado. Defina "ftpUpload.defaultServer" no settings.json.'
-			);
 			return;
 		}
 
-		vscode.window.showInformationMessage(
-			`Upload para FTP padrão (em breve): ${defaultServer.name}`
-		);
+		vscode.window.showInformationMessage(`Upload para FTP padrão (em breve): ${defaultServer.name}`);
 	});
 
 	const uploadSelectCmd = vscode.commands.registerCommand('ftpUpload.uploadSelect', async () => {
