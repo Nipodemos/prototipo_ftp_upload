@@ -1,0 +1,90 @@
+{
+  "name": "ftp-upload",
+  "displayName": "FTP Upload",
+  "description": "Extensão para upload de arquivos via FTP/SFTP/FTPS",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ftpUpload.listServers",
+        "title": "FTP Upload: Listar Servidores"
+      }
+    ],
+    "configuration": {
+      "title": "FTP Upload",
+      "properties": {
+        "ftpUpload.servers": {
+          "type": "array",
+          "default": [],
+          "description": "Lista de servidores FTP para upload de arquivos.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "host",
+              "username",
+              "password",
+              "remotePath"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Nome amigável para identificar o servidor (ex: 'Produção', 'Staging')"
+              },
+              "host": {
+                "type": "string",
+                "description": "Endereço do servidor FTP (ex: ftp.exemplo.com)"
+              },
+              "port": {
+                "type": "number",
+                "default": 21,
+                "description": "Porta do servidor FTP (padrão: 21)"
+              },
+              "username": {
+                "type": "string",
+                "description": "Nome de usuário para autenticação"
+              },
+              "password": {
+                "type": "string",
+                "description": "Senha para autenticação"
+              },
+              "remotePath": {
+                "type": "string",
+                "default": "/",
+                "description": "Diretório remoto para upload (ex: /public_html)"
+              },
+              "protocol": {
+                "type": "string",
+                "enum": [
+                  "ftp",
+                  "sftp",
+                  "ftps"
+                ],
+                "default": "ftp",
+                "description": "Protocolo de transferência a ser utilizado"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.96.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.7.0"
+  }
+}
