@@ -309,6 +309,7 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
+			vscode.window.setStatusBarMessage(`FTP padrão: ${defaultServer.name}`, 3000);
 			await executeDownloadCommand(defaultServer, resource, 'Falha no download FTP padrão');
 		}
 	);
