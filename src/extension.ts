@@ -8,7 +8,18 @@ import {
 	validateDefaultFtpServer,
 	validateFtpServer
 } from './config';
-import { downloadFileFromFtp } from './ftpClient';
+import { downloadFileContentFromFtp, downloadFileFromFtp } from './ftpClient';
+
+const REMOTE_DIFF_SCHEME = 'ftp-upload-remote';
+
+interface RemoteDiffSnapshot {
+	content: string;
+	server: FtpServerConfig;
+	remoteFilePath: string;
+	localFileUri: vscode.Uri;
+}
+
+const remoteDiffSnapshots = new Map<string, RemoteDiffSnapshot>();
 
 function getTargetFileUri(resource?: vscode.Uri): vscode.Uri | undefined {
 	if (resource?.scheme === 'file') {
@@ -115,8 +126,8 @@ async function downloadSelectedFileFromServer(
 		return;
 	}
 
-	const activeDoc = vscode.window.activeTextEditor?.document;
-	if (activeDoc && activeDoc.uri.toString() === targetUri.toString() && activeDoc.isDirty) {
+	const targetDoc = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === targetUri.toString());
+	if (targetDoc?.isDirty) {
 		const choice = await vscode.window.showWarningMessage(
 			'O arquivo atual tem alterações não salvas e será sobrescrito pelo download. Continuar?',
 			'Continuar'
@@ -148,6 +159,74 @@ async function downloadSelectedFileFromServer(
 	vscode.window.showInformationMessage(
 		`Download concluído: ${server.name} -> ${path.basename(targetUri.fsPath)}`
 	);
+}
+
+async function openDiffAgainstServer(server: FtpServerConfig, resource?: vscode.Uri): Promise<void> {
+	if (!validateServerOrShow(server)) {
+		return;
+	}
+
+	const targetUri = getTargetFileUri(resource);
+	if (!targetUri) {
+		vscode.window.showWarningMessage(
+			'Nenhum arquivo local selecionado no editor. Abra ou selecione um arquivo e tente novamente.'
+		);
+		return;
+	}
+
+	const remoteFilePath = toRemotePath(targetUri, server.remotePath);
+	const localName = path.basename(targetUri.fsPath);
+
+	let remoteContent = '';
+	await vscode.window.withProgress(
+		{
+			location: vscode.ProgressLocation.Notification,
+			title: `FTP: comparando ${localName} com ${server.name}`
+		},
+		async () => {
+			remoteContent = await downloadFileContentFromFtp({
+				host: server.host,
+				port: server.port,
+				username: server.username,
+				password: server.password,
+				remoteFilePath
+			});
+		}
+	);
+
+	const remoteUri = vscode.Uri.from({
+		scheme: REMOTE_DIFF_SCHEME,
+		path: `/${localName}`,
+		query: `server=${encodeURIComponent(server.name)}&remote=${encodeURIComponent(remoteFilePath)}&t=${Date.now()}`
+	});
+
+	remoteDiffSnapshots.set(remoteUri.toString(), {
+		content: remoteContent,
+		server,
+		remoteFilePath,
+		localFileUri: targetUri
+	});
+
+	await vscode.commands.executeCommand(
+		'vscode.diff',
+		targetUri,
+		remoteUri,
+		`FTP Diff: ${localName} (${server.name})`,
+		{ preview: false }
+	);
+}
+
+async function executeDiffCommand(
+	server: FtpServerConfig,
+	resource: vscode.Uri | undefined,
+	errorPrefix: string
+): Promise<void> {
+	try {
+		await openDiffAgainstServer(server, resource);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		vscode.window.showErrorMessage(`${errorPrefix}: ${message}`);
+	}
 }
 
 function getDefaultServerOrShow(): FtpServerConfig | undefined {
@@ -258,6 +337,66 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	const diffDefaultCmd = vscode.commands.registerCommand(
+		'ftpUpload.diffDefault',
+		async (resource?: vscode.Uri) => {
+			const defaultServer = getDefaultServerOrShow();
+			if (!defaultServer) {
+				return;
+			}
+
+			await executeDiffCommand(defaultServer, resource, 'Falha ao abrir diff com FTP padrão');
+		}
+	);
+
+	const diffSelectCmd = vscode.commands.registerCommand('ftpUpload.diffSelect', async (resource?: vscode.Uri) => {
+		const servers = getFtpServers();
+		if (servers.length === 0) {
+			vscode.window.showWarningMessage(
+				'Nenhum servidor FTP configurado. Configure "ftpUpload.servers" no settings.json.'
+			);
+			return;
+		}
+
+		if (!validateServersOrShow(servers, true)) {
+			return;
+		}
+
+		const selectedServer = await pickServer(servers, 'Selecione o servidor FTP para comparação');
+		if (!selectedServer) {
+			return;
+		}
+
+		await executeDiffCommand(selectedServer, resource, 'Falha ao abrir diff com FTP');
+	});
+
+	const downloadFromDiffCmd = vscode.commands.registerCommand(
+		'ftpUpload.downloadFromDiff',
+		async (resource?: vscode.Uri) => {
+			const remoteUri = resource ?? vscode.window.activeTextEditor?.document.uri;
+			if (!remoteUri || remoteUri.scheme !== REMOTE_DIFF_SCHEME) {
+				vscode.window.showWarningMessage(
+					'Esse comando só funciona no arquivo remoto aberto no diff do FTP.'
+				);
+				return;
+			}
+
+			const snapshot = remoteDiffSnapshots.get(remoteUri.toString());
+			if (!snapshot) {
+				vscode.window.showWarningMessage(
+					'Não foi possível recuperar os dados deste diff. Abra a comparação novamente.'
+				);
+				return;
+			}
+
+			await executeDownloadCommand(
+				snapshot.server,
+				snapshot.localFileUri,
+				'Falha ao baixar a versão remota do diff'
+			);
+		}
+	);
+
 	const uploadDefaultCmd = vscode.commands.registerCommand('ftpUpload.uploadDefault', async () => {
 		const defaultServer = getDefaultServerOrShow();
 		if (!defaultServer) {
@@ -271,12 +410,32 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('Upload para FTP... (em breve).');
 	});
 
+	const remoteDiffProvider = vscode.workspace.registerTextDocumentContentProvider(REMOTE_DIFF_SCHEME, {
+		provideTextDocumentContent(uri: vscode.Uri): string {
+			const snapshot = remoteDiffSnapshots.get(uri.toString());
+			return snapshot?.content ?? '';
+		}
+	});
+
+	const closeRemoteDiffDocListener = vscode.workspace.onDidCloseTextDocument(document => {
+		if (document.uri.scheme !== REMOTE_DIFF_SCHEME) {
+			return;
+		}
+
+		remoteDiffSnapshots.delete(document.uri.toString());
+	});
+
 	context.subscriptions.push(
 		listServersCmd,
 		downloadDefaultCmd,
 		downloadSelectCmd,
+		diffDefaultCmd,
+		diffSelectCmd,
+		downloadFromDiffCmd,
 		uploadDefaultCmd,
-		uploadSelectCmd
+		uploadSelectCmd,
+		remoteDiffProvider,
+		closeRemoteDiffDocListener
 	);
 }
 
