@@ -26,6 +26,18 @@
         "title": "Baixar do FTP..."
       },
       {
+        "command": "ftpUpload.diffDefault",
+        "title": "Comparar com FTP padrão"
+      },
+      {
+        "command": "ftpUpload.diffSelect",
+        "title": "Comparar com FTP..."
+      },
+      {
+        "command": "ftpUpload.downloadFromDiff",
+        "title": "Baixar versão do FTP (Diff)"
+      },
+      {
         "command": "ftpUpload.uploadDefault",
         "title": "Upload para FTP padrão"
       },
@@ -57,12 +69,27 @@
           "group": "1_download"
         },
         {
+          "command": "ftpUpload.diffDefault",
+          "group": "1_download"
+        },
+        {
+          "command": "ftpUpload.diffSelect",
+          "group": "1_download"
+        },
+        {
           "command": "ftpUpload.uploadDefault",
           "group": "2_upload"
         },
         {
           "command": "ftpUpload.uploadSelect",
           "group": "2_upload"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "ftpUpload.downloadFromDiff",
+          "group": "navigation",
+          "when": "resourceScheme == ftp-upload-remote"
         }
       ]
     },
