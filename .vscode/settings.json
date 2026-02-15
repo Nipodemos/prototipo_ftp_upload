@@ -1,41 +1,14 @@
 {
   "ftpUpload.servers": [
     {
-      "name": "Servidor de Teste FTP",
-      "host": "ftp.teste-exemplo.com",
+      "name": "Rebex Public Test FTP",
+      "host": "test.rebex.net",
       "port": 21,
-      "username": "usuario_teste",
-      "password": "senha_teste_123",
-      "remotePath": "/public_html",
-      "protocol": "ftp"
-    },
-    {
-      "name": "Servidor SFTP Produção",
-      "host": "sftp.producao-exemplo.com",
-      "port": 22,
-      "username": "usuario_producao",
-      "password": "senha_producao_456",
-      "remotePath": "/var/www/html",
-      "protocol": "sftp"
-    },
-    {
-      "name": "Servidor FTPS Staging",
-      "host": "ftps.staging-exemplo.com",
-      "port": 990,
-      "username": "usuario_staging",
-      "password": "senha_staging_789",
-      "remotePath": "/staging/site",
-      "protocol": "ftps"
-    },
-    {
-      "name": "Servidor Local Docker",
-      "host": "localhost",
-      "port": 21,
-      "username": "admin",
-      "password": "admin",
-      "remotePath": "/uploads",
+      "username": "demo",
+      "password": "password",
+      "remotePath": "/",
       "protocol": "ftp"
     }
   ],
-  "ftpUpload.defaultServer": "Servidor de Teste FTP"
+  "ftpUpload.defaultServer": "Rebex Public Test FTP"
 }
