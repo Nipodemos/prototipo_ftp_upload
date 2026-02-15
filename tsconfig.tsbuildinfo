@@ -1,1 +1,11 @@
-{"root":["./src/config.ts","./src/extension.ts","./src/ftpclient.ts"],"version":"5.9.3"}
+{
+  "root": [
+    "./src/config.ts",
+    "./src/extension.ts",
+    "./src/ftpclient.ts",
+    "./src/extension/diff.ts",
+    "./src/extension/download.ts",
+    "./src/extension/shared.ts"
+  ],
+  "version": "5.9.3"
+}
