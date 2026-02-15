@@ -19,11 +19,16 @@ export interface FtpServerConfig {
 
 const CONFIG_SECTION = 'ftpUpload';
 
+function getConfig() {
+	const scopeUri = vscode.workspace.workspaceFolders?.[0]?.uri;
+	return vscode.workspace.getConfiguration(CONFIG_SECTION, scopeUri);
+}
+
 /**
  * Retorna a lista de servidores FTP configurados nas settings do VS Code.
  */
 export function getFtpServers(): FtpServerConfig[] {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	const config = getConfig();
 	const servers = config.get<FtpServerConfig[]>('servers', []);
 	return servers;
 }
@@ -32,7 +37,7 @@ export function getFtpServers(): FtpServerConfig[] {
  * Retorna o nome configurado como servidor FTP padrão.
  */
 export function getDefaultFtpServerName(): string {
-	const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+	const config = getConfig();
 	const defaultServer = config.get<string>('defaultServer', '');
 	return defaultServer.trim();
 }

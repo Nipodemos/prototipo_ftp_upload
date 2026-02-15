@@ -98,6 +98,7 @@
       "properties": {
         "ftpUpload.servers": {
           "type": "array",
+          "scope": "resource",
           "default": [],
           "description": "Lista de servidores FTP para upload de arquivos.",
           "items": {
@@ -151,6 +152,7 @@
         },
         "ftpUpload.defaultServer": {
           "type": "string",
+          "scope": "resource",
           "default": "",
           "description": "Nome do servidor FTP padrão (deve ser igual ao campo \"name\" de um item em ftpUpload.servers)."
         }

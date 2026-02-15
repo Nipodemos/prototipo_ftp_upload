@@ -8,6 +8,15 @@
       "password": "password",
       "remotePath": "/",
       "protocol": "ftp"
+    },
+    {
+      "name": "Buru Local FTP",
+      "host": "127.0.0.1",
+      "port": 22,
+      "username": "nipodemos",
+      "password": "33561820",
+      "remotePath": "/",
+      "protocol": "ftp"
     }
   ],
   "ftpUpload.defaultServer": "Rebex Public Test FTP"

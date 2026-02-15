@@ -7,7 +7,7 @@
       "request": "launch",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",
-        "${workspaceFolder}"
+        "${workspaceFolder}/ftp-upload-test.code-workspace"
       ],
       "outFiles": [
         "${workspaceFolder}/out/**/*.js"
